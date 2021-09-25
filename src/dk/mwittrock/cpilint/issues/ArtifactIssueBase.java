@@ -2,7 +2,7 @@ package dk.mwittrock.cpilint.issues;
 
 import dk.mwittrock.cpilint.artifacts.IflowArtifactTag;
 
-abstract class ArtifactIssueBase extends IssueBase {
+public abstract class ArtifactIssueBase extends IssueBase {
 	
 	private final IflowArtifactTag tag;
 	

@@ -13,12 +13,12 @@ import dk.mwittrock.cpilint.rules.Rule;
 import dk.mwittrock.cpilint.suppliers.IflowArtifactSupplier;
 
 public final class CpiLint {
-	
+
 	private static final Logger logger = LoggerFactory.getLogger(CpiLint.class);
 	private final IflowArtifactSupplier supplier;
 	private final Collection<Rule> rules;
 	private final IssueConsumer consumer;
-	
+
 	public CpiLint(IflowArtifactSupplier supplier, Collection<Rule> rules, IssueConsumer consumer) {
 		this.supplier = Objects.requireNonNull(supplier, "supplier must not be null");
 		this.consumer = Objects.requireNonNull(consumer, "consumer must not be null");
@@ -35,6 +35,9 @@ public final class CpiLint {
 		supplier.setup();
 		while (supplier.canSupply()) {
 			IflowArtifact ia = supplier.supply();
+			if (ia == null) {
+				continue;
+			}
 			logger.debug("Iflow artifact supplied: {}", ia.getTag());
 			rules.forEach(r -> r.inspect(ia));
 		}

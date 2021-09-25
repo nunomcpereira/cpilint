@@ -1,6 +1,6 @@
 package dk.mwittrock.cpilint.issues;
 
-abstract class IssueBase implements Issue {
+public abstract class IssueBase implements Issue {
 	
 	private final String message;
 	

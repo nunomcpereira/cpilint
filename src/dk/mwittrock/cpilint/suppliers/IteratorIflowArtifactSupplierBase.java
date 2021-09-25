@@ -9,7 +9,7 @@ import dk.mwittrock.cpilint.artifacts.ZipArchiveIflowArtifact;
 import net.sf.saxon.s9api.SaxonApiException;
 
 abstract class IteratorIflowArtifactSupplierBase implements IflowArtifactSupplier {
-	
+
 	protected Iterator<Path> iterator;
 	private int artifactsSupplied = 0;
 
@@ -26,6 +26,9 @@ abstract class IteratorIflowArtifactSupplierBase implements IflowArtifactSupplie
 		IflowArtifact iflow = null;
 		try {
 			iflow = ZipArchiveIflowArtifact.from(iterator.next());
+			if (iflow == null) {
+				return null;
+			}
 		} catch (IOException | SaxonApiException e) {
 			throw new IflowArtifactSupplierError("Error while processing iflow artifact", e);
 		}
@@ -42,7 +45,7 @@ abstract class IteratorIflowArtifactSupplierBase implements IflowArtifactSupplie
 	public void shutdown() {
 		// Shutdown steps implemented by subclasses, if needed.
 	}
-	
+
 	@Override
 	public int artifactsSupplied() {
 		return artifactsSupplied;

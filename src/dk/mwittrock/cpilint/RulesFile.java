@@ -65,7 +65,7 @@ public final class RulesFile {
 		while(extensionRules.hasNext())
 		{
 			RuleFactory extensionRule = extensionRules.next();
-			logger.debug("Found new extension: '%s'", extensionRule.getClass().getName());
+			logger.debug(String.format("Found new extension: %s", extensionRule.getClass().getName()));
 			ruleFactories.add(extensionRule);
 		}
 	}

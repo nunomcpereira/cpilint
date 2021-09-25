@@ -32,7 +32,7 @@ import net.sf.saxon.s9api.XsltExecutable;
 import net.sf.saxon.s9api.XsltTransformer;
 
 public final class ZipArchiveIflowArtifact implements IflowArtifact {
-	
+
 	private static final String MANIFEST_PATH = "META-INF/MANIFEST.MF";
 	private static final String EXT_PARAMS_REPLACE_XSLT_PATH = "resources/xslt/ReplaceExternalParameters.xsl";
 	private static final String NAME_MANIFEST_HEADER = "Bundle-Name";
@@ -40,26 +40,37 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 	private static final String IFLOW_RESOURCES_BASE_PATH = "src/main/resources/";
 	private static final String EXT_PARAMS_PATH = IFLOW_RESOURCES_BASE_PATH + "parameters.prop";
 	private static final Map<ArtifactResourceType, Predicate<String>> typePredicates;
-	
+
 	static {
 		typePredicates = new HashMap<>();
-		typePredicates.put(ArtifactResourceType.GROOVY_SCRIPT, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "script/") && (s.endsWith(".groovy") || s.endsWith(".gsh")));
-		typePredicates.put(ArtifactResourceType.JAVASCRIPT_SCRIPT, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "script/") && s.endsWith(".js"));
-		typePredicates.put(ArtifactResourceType.XSD, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "xsd/") && s.endsWith(".xsd"));
-		typePredicates.put(ArtifactResourceType.MESSAGE_MAPPING, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/") && s.endsWith(".mmap"));
-		typePredicates.put(ArtifactResourceType.XSLT_MAPPING, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/") && (s.endsWith(".xsl") || s.endsWith(".xslt")));
-		typePredicates.put(ArtifactResourceType.IFLOW, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "scenarioflows/integrationflow/") && s.endsWith(".iflw"));
-		typePredicates.put(ArtifactResourceType.JAVA_ARCHIVE, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "lib/") && (s.endsWith(".jar") || s.endsWith(".zip")));
-		typePredicates.put(ArtifactResourceType.WSDL, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "wsdl/") && (s.endsWith(".wsdl")));
-		typePredicates.put(ArtifactResourceType.EDMX, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "edmx/") && (s.endsWith(".edmx")));
-		typePredicates.put(ArtifactResourceType.OPERATION_MAPPING, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/") && s.endsWith(".opmap"));
+		typePredicates.put(ArtifactResourceType.GROOVY_SCRIPT, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "script/")
+				&& (s.endsWith(".groovy") || s.endsWith(".gsh")));
+		typePredicates.put(ArtifactResourceType.JAVASCRIPT_SCRIPT,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "script/") && s.endsWith(".js"));
+		typePredicates.put(ArtifactResourceType.XSD,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "xsd/") && s.endsWith(".xsd"));
+		typePredicates.put(ArtifactResourceType.MESSAGE_MAPPING,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/") && s.endsWith(".mmap"));
+		typePredicates.put(ArtifactResourceType.XSLT_MAPPING, s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/")
+				&& (s.endsWith(".xsl") || s.endsWith(".xslt")));
+		typePredicates.put(ArtifactResourceType.IFLOW,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "scenarioflows/integrationflow/") && s.endsWith(".iflw"));
+		typePredicates.put(ArtifactResourceType.JAVA_ARCHIVE,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "lib/") && (s.endsWith(".jar") || s.endsWith(".zip")));
+		typePredicates.put(ArtifactResourceType.WSDL,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "wsdl/") && (s.endsWith(".wsdl")));
+		typePredicates.put(ArtifactResourceType.EDMX,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "edmx/") && (s.endsWith(".edmx")));
+		typePredicates.put(ArtifactResourceType.OPERATION_MAPPING,
+				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/") && s.endsWith(".opmap"));
 	}
-	
+
 	private final IflowArtifactTag tag;
 	private final IflowXml iflowXml;
 	private final Map<ArtifactResourceType, Collection<ArtifactResource>> resources;
-	
-	private ZipArchiveIflowArtifact(IflowArtifactTag tag, Map<ArtifactResourceType, Collection<ArtifactResource>> resources, IflowXml iflowXml) {
+
+	private ZipArchiveIflowArtifact(IflowArtifactTag tag,
+			Map<ArtifactResourceType, Collection<ArtifactResource>> resources, IflowXml iflowXml) {
 		// Private, since instances are returned by the static factory methods.
 		this.tag = tag;
 		this.resources = resources;
@@ -69,10 +80,9 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 	@Override
 	public Collection<ArtifactResource> getResourcesByType(ArtifactResourceType type) {
 		/*
-		 * The resources map is expected to contain a key for every artifact
-		 * resource type. If this iflow artifact does not contain any resources of
-		 * the specified type, the resources map will contain an empty collection
-		 * for that key.
+		 * The resources map is expected to contain a key for every artifact resource
+		 * type. If this iflow artifact does not contain any resources of the specified
+		 * type, the resources map will contain an empty collection for that key.
 		 */
 		if (!resources.containsKey(type)) {
 			throw new IflowArtifactError("Artifact resource type not found");
@@ -84,7 +94,7 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 	public IflowXml getIflowXml() {
 		return iflowXml;
 	}
-	
+
 	@Override
 	public IflowArtifactTag getTag() {
 		return tag;
@@ -99,6 +109,9 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 		Map<String, byte[]> contents = extractArchiveContents(is);
 		// Extract the iflow's name and ID from the manifest.
 		IflowArtifactTag tag = createTag(contents.get(MANIFEST_PATH));
+		if (tag == null) {
+			return null;
+		}
 		// Replace external parameters in the iflow XML, if this iflow artifact
 		// actually contains an external parameters file (this is not always the case).
 		if (externalParametersPresent(contents)) {
@@ -119,46 +132,46 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 	private static void replaceExternalParameters(Map<String, byte[]> contents) throws IOException, SaxonApiException {
 		String iflowXmlPath = getIflowXmlPath(contents.keySet());
 		InputStream iflowXml = new ByteArrayInputStream(contents.get(iflowXmlPath));
-		InputStream stylesheet = ZipArchiveIflowArtifact.class.getClassLoader().getResourceAsStream(EXT_PARAMS_REPLACE_XSLT_PATH);
+		InputStream stylesheet = ZipArchiveIflowArtifact.class.getClassLoader()
+				.getResourceAsStream(EXT_PARAMS_REPLACE_XSLT_PATH);
 		Map<String, String> parametersMap = getExternalParamsMap(contents);
 		byte[] newIflowXml = transformIflowXml(stylesheet, iflowXml, parametersMap);
 		contents.put(iflowXmlPath, newIflowXml);
 	}
 
 	private static String getIflowXmlPath(Set<String> allPaths) {
-		List<String> iflowXmlPaths = allPaths
-			.stream()
-			.filter(typePredicates.get(ArtifactResourceType.IFLOW))
-			.collect(Collectors.toList());
+		List<String> iflowXmlPaths = allPaths.stream().filter(typePredicates.get(ArtifactResourceType.IFLOW))
+				.collect(Collectors.toList());
 		// We expect exactly one iflow XML path.
 		if (iflowXmlPaths.isEmpty() || iflowXmlPaths.size() > 1) {
 			throw new IflowArtifactError("Unable to locate iflow XML in artifact");
 		}
 		return iflowXmlPaths.get(0);
 	}
-	
-	private static byte[] transformIflowXml(InputStream stylesheet, InputStream iflowXml, Map<String, String> parametersMap) throws SaxonApiException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+	private static byte[] transformIflowXml(InputStream stylesheet, InputStream iflowXml,
+			Map<String, String> parametersMap) throws SaxonApiException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		Processor proc = new Processor(false);
-        XsltCompiler comp = proc.newXsltCompiler();
-        XsltExecutable exe = comp.compile(new StreamSource(stylesheet));
-        XsltTransformer xslt = exe.load();
-        xslt.setSource(new StreamSource(iflowXml));
-        xslt.setDestination(proc.newSerializer(out));
-        XdmMap xdmMap = XdmMap.makeMap(parametersMap);
-        xslt.setParameter(new QName("parameterMap"), xdmMap);
-        xslt.transform();
-        return out.toByteArray();
+		XsltCompiler comp = proc.newXsltCompiler();
+		XsltExecutable exe = comp.compile(new StreamSource(stylesheet));
+		XsltTransformer xslt = exe.load();
+		xslt.setSource(new StreamSource(iflowXml));
+		xslt.setDestination(proc.newSerializer(out));
+		XdmMap xdmMap = XdmMap.makeMap(parametersMap);
+		xslt.setParameter(new QName("parameterMap"), xdmMap);
+		xslt.transform();
+		return out.toByteArray();
 	}
 
 	private static Map<String, String> getExternalParamsMap(Map<String, byte[]> contents) throws IOException {
 		Properties props = new Properties();
 		props.load(new ByteArrayInputStream(contents.get(EXT_PARAMS_PATH)));
 		Map<String, String> parametersMap = new HashMap<>();
-		props.forEach((k, v) -> parametersMap.put((String)k, (String)v));
+		props.forEach((k, v) -> parametersMap.put((String) k, (String) v));
 		return Collections.unmodifiableMap(parametersMap);
 	}
-	
+
 	private static Map<String, byte[]> extractArchiveContents(InputStream is) throws IOException {
 		Map<String, byte[]> contents = new HashMap<>();
 		try (ZipInputStream zis = new ZipInputStream(is)) {
@@ -171,18 +184,17 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 		}
 		return contents;
 	}
-	
+
 	private static String extractId(String manifestValue) {
 		/*
-		 *  Here are the two known formats of the iflow ID manifest value:
-		 *  
-		 *  HCITracker
-		 *  HCITracker; singleton:=true
-		 *  
-		 *  If our assumptions about the value retrieved from the manifest
-		 *  do not hold, an IflowArtifactError is thrown.
-		 *  
-		 *  TODO: Confirm the format of the manifest value.
+		 * Here are the two known formats of the iflow ID manifest value:
+		 * 
+		 * HCITracker HCITracker; singleton:=true
+		 * 
+		 * If our assumptions about the value retrieved from the manifest do not hold,
+		 * an IflowArtifactError is thrown.
+		 * 
+		 * TODO: Confirm the format of the manifest value.
 		 */
 		if (manifestValue == null || manifestValue.length() == 0) {
 			throw new IflowArtifactError("Empty manifest value when trying to extract iflow ID");
@@ -193,13 +205,16 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 		}
 		return tokens[0];
 	}
-	
+
 	private static IflowXml createIflowXml(Map<String, byte[]> contents) throws IOException {
 		String iflowXmlPath = getIflowXmlPath(contents.keySet());
 		return IflowXml.fromInputStream(new ByteArrayInputStream(contents.get(iflowXmlPath)));
 	}
 
 	private static IflowArtifactTag createTag(byte[] manifestContents) throws IOException {
+		if (manifestContents == null) {
+			return null;
+		}
 		Manifest m = new Manifest(new ByteArrayInputStream(manifestContents));
 		Attributes a = m.getMainAttributes();
 		if (!a.containsKey(new Attributes.Name(NAME_MANIFEST_HEADER))) {
@@ -212,15 +227,14 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 		String name = a.getValue(NAME_MANIFEST_HEADER);
 		return new IflowArtifactTag(id, name);
 	}
-	
-	private static Map<ArtifactResourceType, Collection<ArtifactResource>> createResourcesMap(IflowArtifactTag tag, Map<String, byte[]> contents) {
+
+	private static Map<ArtifactResourceType, Collection<ArtifactResource>> createResourcesMap(IflowArtifactTag tag,
+			Map<String, byte[]> contents) {
 		Map<ArtifactResourceType, Collection<ArtifactResource>> resourcesMap = new HashMap<>();
 		for (ArtifactResourceType type : typePredicates.keySet()) {
-			Collection<ArtifactResource> resources = contents.keySet()
-				.stream()
-				.filter(typePredicates.get(type))
-				.map(p -> new ArtifactResource(tag, type, resourceNameFromResourcePath(p), contents.get(p)))
-				.collect(Collectors.toList());
+			Collection<ArtifactResource> resources = contents.keySet().stream().filter(typePredicates.get(type))
+					.map(p -> new ArtifactResource(tag, type, resourceNameFromResourcePath(p), contents.get(p)))
+					.collect(Collectors.toList());
 			resourcesMap.put(type, resources);
 		}
 		return resourcesMap;
@@ -237,7 +251,7 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 		if (lastSlashIndex == resourcePath.length() - 1) {
 			throw new IllegalArgumentException("A resource path cannot end in a slash");
 		}
-		return resourcePath.substring(lastSlashIndex + 1);		
+		return resourcePath.substring(lastSlashIndex + 1);
 	}
-	
+
 }

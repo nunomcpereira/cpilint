@@ -13,3 +13,4 @@ release/
 # Ignore Ant's temporary directory
 
 temp/
+/bin/
