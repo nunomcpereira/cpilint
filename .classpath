@@ -6,11 +6,11 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="compile/commons-cli-1.4.jar"/>
-	<classpathentry kind="lib" path="compile/dom4j-2.1.3.jar"/>
-	<classpathentry kind="lib" path="compile/logback-classic-1.2.3.jar"/>
-	<classpathentry kind="lib" path="compile/logback-core-1.2.3.jar"/>
-	<classpathentry kind="lib" path="compile/Saxon-HE-10.3.jar"/>
-	<classpathentry kind="lib" path="compile/slf4j-api-1.7.30.jar"/>
+	<classpathentry kind="lib" path="F:/CPI/cpilint/cpilint_exported_eclipse/lib/logback-classic-1.2.3.jar"/>
+	<classpathentry kind="lib" path="F:/CPI/cpilint/cpilint_exported_eclipse/lib/dom4j-2.1.3.jar"/>
+	<classpathentry kind="lib" path="F:/CPI/cpilint/cpilint_exported_eclipse/lib/slf4j-api-1.7.30.jar"/>
+	<classpathentry kind="lib" path="F:/CPI/cpilint/cpilint_exported_eclipse/lib/logback-core-1.2.3.jar"/>
+	<classpathentry kind="lib" path="F:/CPI/cpilint/cpilint_exported_eclipse/lib/Saxon-HE-10.3.jar"/>
+	<classpathentry kind="lib" path="F:/CPI/cpilint/cpilint_exported_eclipse/lib/commons-cli-1.4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
