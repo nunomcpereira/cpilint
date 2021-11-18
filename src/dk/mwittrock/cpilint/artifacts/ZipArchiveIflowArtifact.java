@@ -63,6 +63,8 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "edmx/") && (s.endsWith(".edmx")));
 		typePredicates.put(ArtifactResourceType.OPERATION_MAPPING,
 				s -> s.startsWith(IFLOW_RESOURCES_BASE_PATH + "mapping/") && s.endsWith(".opmap"));
+		typePredicates.put(ArtifactResourceType.EXTERNAL_PARAMETERS,
+				s -> s.endsWith(".prop") || s.endsWith(".propdef"));
 	}
 
 	private final IflowArtifactTag tag;
@@ -131,6 +133,7 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 
 	private static void replaceExternalParameters(Map<String, byte[]> contents) throws IOException, SaxonApiException {
 		String iflowXmlPath = getIflowXmlPath(contents.keySet());
+		contents.put(iflowXmlPath.replace(".iflw", "_ORIGINAL_XML.iflw"), contents.get(iflowXmlPath));
 		InputStream iflowXml = new ByteArrayInputStream(contents.get(iflowXmlPath));
 		InputStream stylesheet = ZipArchiveIflowArtifact.class.getClassLoader()
 				.getResourceAsStream(EXT_PARAMS_REPLACE_XSLT_PATH);
@@ -143,9 +146,9 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 		List<String> iflowXmlPaths = allPaths.stream().filter(typePredicates.get(ArtifactResourceType.IFLOW))
 				.collect(Collectors.toList());
 		// We expect exactly one iflow XML path.
-		if (iflowXmlPaths.isEmpty() || iflowXmlPaths.size() > 1) {
+		/*if (iflowXmlPaths.isEmpty() || iflowXmlPaths.size() > 1) {
 			throw new IflowArtifactError("Unable to locate iflow XML in artifact");
-		}
+		}*/
 		return iflowXmlPaths.get(0);
 	}
 
@@ -241,12 +244,16 @@ public final class ZipArchiveIflowArtifact implements IflowArtifact {
 	}
 
 	private static String resourceNameFromResourcePath(String resourcePath) {
+		// The resource name is everything following the last slash.
+		int lastSlashIndex = resourcePath.lastIndexOf('/');
 		// All resource paths have the same base path.
+		if (lastSlashIndex == -1) {
+			return resourcePath;
+		}
 		if (!resourcePath.startsWith(IFLOW_RESOURCES_BASE_PATH)) {
 			throw new IllegalArgumentException("Unexpected base path for resource");
 		}
-		// The resource name is everything following the last slash.
-		int lastSlashIndex = resourcePath.lastIndexOf('/');
+
 		// The path cannot end in a slash.
 		if (lastSlashIndex == resourcePath.length() - 1) {
 			throw new IllegalArgumentException("A resource path cannot end in a slash");
