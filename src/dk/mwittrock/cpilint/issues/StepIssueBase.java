@@ -2,7 +2,7 @@ package dk.mwittrock.cpilint.issues;
 
 import dk.mwittrock.cpilint.artifacts.IflowArtifactTag;
 
-abstract class StepIssueBase extends ArtifactIssueBase {
+public abstract class StepIssueBase extends ArtifactIssueBase {
 	
 	private final String stepName;
 	private final String stepId;
