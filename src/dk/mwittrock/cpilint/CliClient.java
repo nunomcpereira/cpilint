@@ -1,6 +1,12 @@
 package dk.mwittrock.cpilint;
 
 import java.io.Console;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,6 +28,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 import ch.qos.logback.classic.Level;
 import dk.mwittrock.cpilint.api.CloudIntegrationApi;
@@ -41,8 +49,8 @@ import dk.mwittrock.cpilint.suppliers.TenantSingleArtifactsSupplier;
 public final class CliClient {
 	
 	private static final Logger logger = LoggerFactory.getLogger(CliClient.class);
-	private static final String VERSION = "1.0.3";
-	private static final String COPYRIGHT = "2019-2021 Morten N. Wittrock and extended by Nuno Pereira";
+	private static final String VERSION = "1.0.4";
+	private static final String COPYRIGHT = "2019-2022 Morten N. Wittrock and extended by Nuno Pereira";
 	private static final int EXIT_STATUS_SUCCESS = 0;
 	private static final int EXIT_STATUS_ISSUES = 1;
 	private static final int EXIT_STATUS_ERRORS = 2;
@@ -57,15 +65,17 @@ public final class CliClient {
 	private static final String CLI_OPTION_PACKAGES = "packages";
 	private static final String CLI_OPTION_PASSWORD = "password";
 	private static final String CLI_OPTION_USERNAME = "username";
-	private static final String CLI_OPTION_TMN_HOST = "tmn-host";
+	private static final String CLI_OPTION_HOST = "host";
 	private static final String CLI_OPTION_FILES = "files";
 	private static final String CLI_OPTION_DIRECTORY = "directory";
 	private static final String CLI_OPTION_RULES = "rules";
 	private static final String CLI_OPTION_BORING = "boring";
 	private static final String CLI_OPTION_DEBUG = "debug";
+	private static final String CLI_OPTION_VERCHECK = "vercheck";
 	
 	private static enum RunMode {
 		VERSION_MODE,
+		VERSION_CHECK_MODE,
 		HELP_MODE,
 		FILE_SUPPLIER_MODE,
 		DIRECTORY_SUPPLIER_MODE,
@@ -90,7 +100,7 @@ public final class CliClient {
 		RunMode mode = determineMode(cl);
 		logger.info("Mode detected: {}", mode);
 		/*
-		 * The help and version modes are handled separately.
+		 * The help, version and version check modes are handled separately.
 		 */
 		if (mode == RunMode.HELP_MODE) {
 	        printUsage();
@@ -100,11 +110,17 @@ public final class CliClient {
 			printVersionBanner();
 			System.exit(EXIT_STATUS_SUCCESS);
 		}
+		if (mode == RunMode.VERSION_CHECK_MODE) {
+			versionCheck(true);
+			System.exit(EXIT_STATUS_SUCCESS);
+		}
 		/*
-		 * Prepare to run a test.
+		 * Prepare to run a test. The rules file is processed first, so that
+		 * the user is not asked to needlessly type in their password, if
+		 * it turns out there's a problem with the rules file.  
 		 */
-		IflowArtifactSupplier supplier = supplierFromCommandLine(mode, cl);
 		Collection<Rule> rules = rulesFromCommandLine(cl);
+		IflowArtifactSupplier supplier = supplierFromCommandLine(mode, cl);
 		IssueConsumer consumer = issueConsumerFromCommandLine(cl);
 		/*
 		 *  Now, create a CpiLint object and run the test.
@@ -115,6 +131,7 @@ public final class CliClient {
 			printAsciiArtLogo();
 			System.out.println();
 		}
+		versionCheck(false);
 		CpiLint linter = new CpiLint(supplier, rules, consumer);
 		try {
 			linter.run();
@@ -157,6 +174,8 @@ public final class CliClient {
 		RunMode mode = null;
 		if (versionMode(cl)) {
 			mode = RunMode.VERSION_MODE;
+		} else if (versionCheckMode(cl)) {
+			mode = RunMode.VERSION_CHECK_MODE;
 		} else if (helpMode(cl)) {
 			mode = RunMode.HELP_MODE;
 		} else if (fileSupplierMode(cl)) {
@@ -303,7 +322,7 @@ public final class CliClient {
 	}
 	
 	private static IflowArtifactSupplier tenantSupplierSingleFromCommandLine(CommandLine cl) {
-		String tmnHost = cl.getOptionValue(CLI_OPTION_TMN_HOST);
+		String tmnHost = cl.getOptionValue(CLI_OPTION_HOST);
 		String username = cl.getOptionValue(CLI_OPTION_USERNAME);
 		char[] password = cl.hasOption(CLI_OPTION_PASSWORD) ? cl.getOptionValue(CLI_OPTION_PASSWORD).toCharArray() : promptForPassword(username);
 		CloudIntegrationApi api = new CloudIntegrationOdataApi(tmnHost, username, password);
@@ -312,7 +331,7 @@ public final class CliClient {
 	}
 
 	private static IflowArtifactSupplier tenantSupplierMultiFromCommandLine(CommandLine cl) {
-		String tmnHost = cl.getOptionValue(CLI_OPTION_TMN_HOST);
+		String tmnHost = cl.getOptionValue(CLI_OPTION_HOST);
 		String username = cl.getOptionValue(CLI_OPTION_USERNAME);
 		char[] password = cl.hasOption(CLI_OPTION_PASSWORD) ? cl.getOptionValue(CLI_OPTION_PASSWORD).toCharArray() : promptForPassword(username);
 		CloudIntegrationApi api = new CloudIntegrationOdataApi(tmnHost, username, password);
@@ -324,7 +343,7 @@ public final class CliClient {
 	}
 	
 	private static IflowArtifactSupplier tenantSupplierPackagesFromCommandLine(CommandLine cl) {
-		String tmnHost = cl.getOptionValue(CLI_OPTION_TMN_HOST);
+		String tmnHost = cl.getOptionValue(CLI_OPTION_HOST);
 		String username = cl.getOptionValue(CLI_OPTION_USERNAME);
 		char[] password = cl.hasOption(CLI_OPTION_PASSWORD) ? cl.getOptionValue(CLI_OPTION_PASSWORD).toCharArray() : promptForPassword(username);
 		CloudIntegrationApi api = new CloudIntegrationOdataApi(tmnHost, username, password);
@@ -382,6 +401,9 @@ public final class CliClient {
 		System.out.println("To see usage information (this message):");
 		System.out.println(">cpilint -help");
 		System.out.println();
+		System.out.println("To check if you are running the latest version of CPILint:");
+		System.out.println(">cpilint -vercheck");
+		System.out.println();
 		System.out.println("To inspect individual iflow files on the local machine:");
 		System.out.println(">cpilint -rules <file> -files <file> ...");
 		System.out.println();
@@ -389,7 +411,7 @@ public final class CliClient {
 		System.out.println(">cpilint -rules <file> -directory <dir>");
 		System.out.println();
 		System.out.println("To inspect all iflows in your tenant:");
-		System.out.println(">cpilint -rules <file> -tmn-host <host> -username <user>");
+		System.out.println(">cpilint -rules <file> -host <host> -username <user>");
 		System.out.println();
 		System.out.println("Apply the optional -skip-sap-packages option to skip SAP packages.");
 		System.out.println("Apply the optional -skip-packages <id> ... option to skip certain packages.");
@@ -397,13 +419,13 @@ public final class CliClient {
 		System.out.println("Apply the optional -skip-iflows <id> ... option to skip certain iflows.");
 		System.out.println();
 		System.out.println("To inspect the iflows in individual packages in your tenant:");
-		System.out.println(">cpilint -rules <file> -tmn-host <host> -username <user> -packages <id> ...");
+		System.out.println(">cpilint -rules <file> -host <host> -username <user> -packages <id> ...");
 		System.out.println();
 		System.out.println("Apply the optional -skip-drafts option to skip draft iflows.");
 		System.out.println("Apply the optional -skip-iflows <id> ... option to skip certain iflows.");
 		System.out.println();
 		System.out.println("To inspect individual iflows in your tenant:");
-		System.out.println(">cpilint -rules <file> -tmn-host <host> -username <user> -iflows <id> ...");
+		System.out.println(">cpilint -rules <file> -host <host> -username <user> -iflows <id> ...");
 		System.out.println();
 		System.out.println("You can provide your tenant password with the optional -password <password> option. If you don't, you will be prompted for it.");
 		System.out.println();
@@ -480,7 +502,7 @@ public final class CliClient {
             .build());
         // Add the Tenant Management Node host option.
         options.addOption(Option.builder()
-        	.longOpt(CLI_OPTION_TMN_HOST)
+        	.longOpt(CLI_OPTION_HOST)
             .required(false)
             .hasArg()
             .argName("host")
@@ -555,7 +577,14 @@ public final class CliClient {
             .hasArg(false)
             .desc("Create a debug log file")
             .build());
-        // All done.
+        // Add the version check option.
+        options.addOption(Option.builder()
+        	.longOpt(CLI_OPTION_VERCHECK)
+            .required(false)
+            .hasArg(false)
+            .desc("Check if a newer version of CPILint exists")
+            .build());
+			// All done.
         return options;
     }
     
@@ -564,6 +593,21 @@ public final class CliClient {
     	 *  In this mode, only the -version option has been provided.
     	 */
     	return checkForSingleOption(cl, CLI_OPTION_VERSION);
+    }
+
+    private static boolean versionCheckMode(CommandLine cl) {
+    	/*
+    	 * The following options are mandatory in this mode:
+    	 * 
+    	 * + vercheck
+    	 * 
+    	 * The following options are optional in this mode:
+    	 * 
+    	 * + debug
+    	 */ 
+    	Collection<String> mandatory = List.of(CLI_OPTION_VERCHECK);
+    	Collection<String> optional = List.of(CLI_OPTION_DEBUG);
+    	return checkOptions(cl, mandatory, optional);
     }
 
     private static boolean helpMode(CommandLine cl) {
@@ -616,7 +660,7 @@ public final class CliClient {
     	 * The following options are mandatory in this mode:
     	 * 
     	 * + rules
-    	 * + tmn-host
+    	 * + host
     	 * + username
     	 * + iflows
     	 * 
@@ -626,7 +670,7 @@ public final class CliClient {
     	 * + boring
     	 * + debug
     	 */
-    	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_TMN_HOST, CLI_OPTION_USERNAME, CLI_OPTION_IFLOWS);
+    	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_HOST, CLI_OPTION_USERNAME, CLI_OPTION_IFLOWS);
     	Collection<String> optional = List.of(CLI_OPTION_PASSWORD, CLI_OPTION_BORING, CLI_OPTION_DEBUG);
     	return checkOptions(cl, mandatory, optional);
     }
@@ -636,7 +680,7 @@ public final class CliClient {
     	 * The following options are mandatory in this mode:
     	 * 
     	 * + rules
-    	 * + tmn-host
+    	 * + host
     	 * + username
     	 * 
     	 * The following options are optional:
@@ -649,7 +693,7 @@ public final class CliClient {
     	 * + boring
     	 * + debug
     	 */
-    	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_TMN_HOST, CLI_OPTION_USERNAME);
+    	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_HOST, CLI_OPTION_USERNAME);
     	Collection<String> optional = List.of(CLI_OPTION_PASSWORD, CLI_OPTION_SKIP_SAP_PACKAGES, CLI_OPTION_SKIP_IFLOWS, CLI_OPTION_SKIP_PACKAGES, CLI_OPTION_SKIP_DRAFTS, CLI_OPTION_BORING, CLI_OPTION_DEBUG);
     	return checkOptions(cl, mandatory, optional);
     }
@@ -659,7 +703,7 @@ public final class CliClient {
     	 * The following options are mandatory in this mode:
     	 * 
     	 * + rules
-    	 * + tmn-host
+    	 * + host
     	 * + username
     	 * + packages
     	 * 
@@ -671,7 +715,7 @@ public final class CliClient {
     	 * + boring
     	 * + debug
     	 */
-    	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_TMN_HOST, CLI_OPTION_USERNAME, CLI_OPTION_PACKAGES);
+    	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_HOST, CLI_OPTION_USERNAME, CLI_OPTION_PACKAGES);
     	Collection<String> optional = List.of(CLI_OPTION_PASSWORD, CLI_OPTION_SKIP_IFLOWS, CLI_OPTION_SKIP_DRAFTS, CLI_OPTION_BORING, CLI_OPTION_DEBUG);
     	return checkOptions(cl, mandatory, optional);
     }
@@ -710,6 +754,115 @@ public final class CliClient {
 			 */
 			ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
 			rootLogger.setLevel(Level.DEBUG);
+		}
+	}
+
+	private static void versionCheck(boolean userInitiated) {
+		/*
+		 * If the user initiated the version check, any errors that might occur
+		 * are reported (i.e. printed on stderr). If the version check is run
+		 * as part of normal program execution (i.e. not user initiated), any
+		 * errors that might occur are logged but not reported. In this mode,
+		 * if anything fails we'll just return from the method.
+		 */
+		final String apiEndpoint = "https://api.github.com/repos/mwittrock/cpilint/releases/latest";
+		final String tagRegex = "^v\\d+(?:\\.\\d+)+$";
+		final int httpOkayStatus = 200; // TODO: All the statuses we use should go in a utility class as static final fields.
+		final String whereToDownload = "https://github.com/mwittrock/cpilint/releases/latest";
+		// Fetch the GitHub API response.
+		URI apiUri = null;
+		try {
+			apiUri = new URI(apiEndpoint);
+		} catch (URISyntaxException e) {
+			// This should never happen!
+			logger.error("Unexpected GitHub API URI issue", e);
+			if (userInitiated) {
+				exitWithErrorMessage("There was a problem with the GitHub API endpoint URI.");
+			} else {
+				return;
+			}
+		}
+        HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(apiUri)
+            .GET()
+            .build();
+        HttpResponse<String> response = null;
+		try {
+			logger.debug("Calling GitHub API at {}", apiEndpoint);
+			response = client.send(request, HttpResponse.BodyHandlers.ofString());
+		} catch (IOException | InterruptedException e) {
+			logger.error("Exception calling GitHub API", e);
+			if (userInitiated) {
+				exitWithErrorMessage("There was a problem calling the GitHub API.");
+			} else {
+				return;
+			}
+		}
+		// Only proceed if we received HTTP status OK.
+		final int status = response.statusCode();
+		if (status != httpOkayStatus) {
+			logger.error("Unexpected HTTP status code returned by GitHub API: {}", status);
+			if (userInitiated) {
+				exitWithErrorMessage("Received a non-success response from the GitHub API.");
+			} else {
+				return;
+			}
+		}
+		// Parse the JSON response.
+		JSONObject parsed = null;
+		try {
+			logger.debug("Parsing GitHub API response");
+			parsed = new JSONObject(response.body());
+		} catch (JSONException e) {
+			logger.error("Exception parsing GitHub API response", e);
+			if (userInitiated) {
+				exitWithErrorMessage("There was a problem parsing the GitHub API response.");
+			} else {
+				return;
+			}
+		}
+		// Extract the release tag.
+		String tag = null;
+		try {
+			tag = parsed.getString("tag_name");
+		} catch (JSONException e) {
+			logger.debug("JSONException retrieving tag_name", e);
+			if (userInitiated) {
+				exitWithErrorMessage("There was a problem with the GitHub API response.");
+			} else {
+				return;
+			}
+		}
+		logger.debug("Extracted tag '{}' from GitHub API response", tag);
+		// Check that the tag has the expected format.
+		if (!tag.matches(tagRegex)) {
+			logger.error("Extracted tag does not have the expected format");
+			if (userInitiated) {
+				exitWithErrorMessage("GitHub API response did not have the expected format.");
+			} else {
+				return;
+			}
+		}
+		// Now compare the version numbers.
+		String latestVersion = tag.substring(1);
+		logger.debug("The latest version on GitHub is {}", latestVersion);
+		// Assumption: If the version on GitHub is different from the local version, the version on GitHub is newer.
+		if (VERSION.equals(latestVersion)) {
+			if (userInitiated) {
+				System.out.println("Congratulations! You are running the latest version of CPILint.");
+				System.exit(EXIT_STATUS_SUCCESS);
+			}
+		} else {
+			if (userInitiated) {
+				String message = String.format("You are running version %s of CPILint. Version %s is available and can be downloaded here: %s", VERSION, latestVersion, whereToDownload);
+				System.out.println(message);
+				System.exit(EXIT_STATUS_SUCCESS);
+			} else {
+				String message = String.format("Please note that you are not running the latest version of CPILint. You can download the latest version (%s) here: %s", latestVersion, whereToDownload);
+				System.out.println(message);
+				System.out.println();
+			}
 		}
 	}
     

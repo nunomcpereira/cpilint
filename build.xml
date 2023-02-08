@@ -3,7 +3,7 @@
 <project name="CPILint" default="compile" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
 
 	<property name="app.name" value="cpilint"/>
-	<property name="version" value="1.0.3"/>
+	<property name="version" value="1.0.4"/>
 	<property name="app.name.versioned" value="${app.name}-${version}"/>
 	<property name="jar" value="${app.name.versioned}.jar"/>
 	<property name="source.dir" value="src"/>
@@ -23,6 +23,8 @@
 	<property name="logback.dir" value="logback"/>
 	<property name="resources.dir" value="resources"/>
 	<property name="dist.files.dir" value="dist-files"/>
+	<property name="xerces.dir" value="${dist.files.dir}/xerces-runtime-jars"/>
+	<property name="samples.dir" value="${dist.files.dir}/samples"/>
 
 	<path id="classpath.build">
 		<fileset dir="${compile.dependencies.dir}" includes="*.jar"/>
@@ -81,12 +83,14 @@
 		<zip destfile="${release.dir}/${release.archive}">
 			<zipfileset dir="${build.lib}" includes="${jar}" prefix="${release.root}/lib"/>
 			<zipfileset dir="${runtime.dependencies.dir}" includes="*.jar" prefix="${release.root}/lib"/>
+			<zipfileset dir="${xerces.dir}" includes="*.jar" prefix="${release.root}/lib"/>
 			<zipfileset dir="${temp.dir}" includes="${source.archive}" prefix="${release.root}/source"/>
 			<zipfileset dir="${scripts.dir}" prefix="${release.root}/bin"/>
 			<zipfileset dir="." includes="LICENSE.txt" prefix="${release.root}/"/>
 			<zipfileset dir="${logback.dir}" prefix="${release.root}/logback"/>
 			<zipfileset dir="${3rd.party.licenses.dir}" prefix="${release.root}/3rd-party-licenses"/>
 			<zipfileset dir="${dist.files.dir}" includes="README.txt" prefix="${release.root}/"/>
+			<zipfileset dir="${samples.dir}" prefix="${release.root}/samples"/>
 		</zip>
 		<!-- Clean up. -->
 		<delete dir="${temp.dir}"/>
