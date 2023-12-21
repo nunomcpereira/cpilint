@@ -131,7 +131,7 @@ public final class CliClient {
 			printAsciiArtLogo();
 			System.out.println();
 		}
-		versionCheck(false);
+		//versionCheck(false);
 		CpiLint linter = new CpiLint(supplier, rules, consumer);
 		try {
 			linter.run();

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<project name="CPILint" default="compile" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+<project name="CPILint" default="release" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
 
 	<property name="app.name" value="cpilint"/>
 	<property name="version" value="1.0.4"/>
