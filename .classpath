@@ -7,7 +7,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="var" path="CPILINT_LIBS/commons-cli-1.4.jar"/>
-	<classpathentry kind="var" path="CPILINT_LIBS/cpilint_custom.jar"/>
 	<classpathentry kind="var" path="CPILINT_LIBS/cpilint-1.0.4.jar"/>
 	<classpathentry kind="var" path="CPILINT_LIBS/cupv10k-runtime.jar"/>
 	<classpathentry kind="var" path="CPILINT_LIBS/dom4j-2.1.3.jar"/>

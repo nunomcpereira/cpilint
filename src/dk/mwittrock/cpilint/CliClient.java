@@ -14,8 +14,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -72,6 +74,7 @@ public final class CliClient {
 	private static final String CLI_OPTION_BORING = "boring";
 	private static final String CLI_OPTION_DEBUG = "debug";
 	private static final String CLI_OPTION_VERCHECK = "vercheck";
+	private static final String CLI_OPTION_CREATIONDATES = "creationDates";
 	
 	private static enum RunMode {
 		VERSION_MODE,
@@ -122,6 +125,9 @@ public final class CliClient {
 		Collection<Rule> rules = rulesFromCommandLine(cl);
 		IflowArtifactSupplier supplier = supplierFromCommandLine(mode, cl);
 		IssueConsumer consumer = issueConsumerFromCommandLine(cl);
+		HashMap<String, String> creationDatesMap = creationDatesFromCommandLine(cl);
+		SharedMemory.creationDates = creationDatesMap;
+		
 		/*
 		 *  Now, create a CpiLint object and run the test.
 		 */
@@ -192,6 +198,7 @@ public final class CliClient {
 			logger.error("Could not determine run mode from command line arguments");
 			exitWithErrorMessage(COMMAND_LINE_ERROR_MESSAGE);
 		}
+		System.out.println(mode + "   ###############################----####");
 		return mode;
 	}
 
@@ -246,6 +253,45 @@ public final class CliClient {
 		}		
 		return rules;
 	}
+	
+	private static HashMap<String, String> creationDatesFromCommandLine(CommandLine cl) {
+        // If the 'creationDates' option is not present, return an empty map
+        if (!cl.hasOption(CLI_OPTION_CREATIONDATES)) {
+            return new HashMap<>();
+        }
+
+        HashMap<String, String> creationDatesMap = new HashMap<>();
+        String creationDatesArg = cl.getOptionValue(CLI_OPTION_CREATIONDATES);
+        System.out.println(creationDatesArg);
+        try {
+            // Parse the creationDates argument
+            creationDatesMap = parseHashMapArgument(creationDatesArg);
+        } catch (IllegalArgumentException e) {
+            logger.error("Error parsing creationDates argument", e);
+            exitWithErrorMessage("There was an error parsing the creationDates argument: " + e.getMessage());
+        }
+        return creationDatesMap;
+    }
+	
+	private static HashMap<String, String> parseHashMapArgument(String argument) {
+		// Create a HashMap to store the result
+        HashMap<String, String> map = new HashMap<>();
+        
+        // Split the string by commas to get each key-value pair
+        String[] pairs = argument.split(",");
+        
+        // Iterate over the pairs
+        for (String pair : pairs) {
+            // Split each pair by the colon to get the key and value
+            String[] keyValue = pair.split(":");
+            
+            // Add the key-value pair to the map
+            if (keyValue.length == 2) { // Ensure it contains both key and value
+                map.put(keyValue[0], keyValue[1]);
+            }
+        }
+        return map;
+    }
 	
 	private static IssueConsumer issueConsumerFromCommandLine(CommandLine cl) {
 		/*
@@ -584,6 +630,14 @@ public final class CliClient {
             .hasArg(false)
             .desc("Check if a newer version of CPILint exists")
             .build());
+        // Add the creationDates mode option.
+        options.addOption(Option.builder()
+            .longOpt(CLI_OPTION_CREATIONDATES)
+        	.required(false)
+        	.hasArg()
+            .argName("creationDates")
+            .desc("Add Iflow Creation Dates HashMap")
+            .build());
 			// All done.
         return options;
     }
@@ -651,7 +705,7 @@ public final class CliClient {
     	 * The -directory option must have exactly one argument.
     	 */
     	Collection<String> mandatory = List.of(CLI_OPTION_RULES, CLI_OPTION_DIRECTORY);
-    	Collection<String> optional = List.of(CLI_OPTION_BORING, CLI_OPTION_DEBUG);
+    	Collection<String> optional = List.of(CLI_OPTION_BORING, CLI_OPTION_DEBUG, CLI_OPTION_CREATIONDATES);
     	return checkOptions(cl, mandatory, optional) && cl.getOptionValues(CLI_OPTION_DIRECTORY).length == 1;
     }
     
